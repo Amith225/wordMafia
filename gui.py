@@ -151,6 +151,7 @@ class Gui(Qt.QWidget):
     def guessLabLost(word): return f"Oops no more turns left! You Lost, The word was '{word}'"
 
     def __game_init(self):
+        self.greens = set()
         self.__word = cmd.genRandomWord()
         self.__toGuessBut()
         for i in range(1, self.wordz.numAttempts + 1): self.wordz.changeText(i, '')
@@ -162,8 +163,11 @@ class Gui(Qt.QWidget):
         if cmd.checkIfAllowed(gWord):
             self.guessLab.setText(self.guessLabWord1())
             greenWords, yellowWords, grayWords = cmd.checkRules(self.__word, gWord)
-            self.keyBoard.colorIfy(*[gWord[i].upper() for i in greenWords], col=self.keyBoard.GREEN)
-            self.keyBoard.colorIfy(*[gWord[i].upper() for i in yellowWords], col=self.keyBoard.YELLOW)
+            greens = [gWord[i].upper() for i in greenWords]
+            self.greens.update(greens)
+            self.keyBoard.colorIfy(*greens, col=self.keyBoard.GREEN)
+            self.keyBoard.colorIfy(*[gWord[i].upper() for i in yellowWords if gWord[i].upper() not in self.greens],
+                                   col=self.keyBoard.YELLOW)
             self.keyBoard.colorIfy(*[gWord[i].upper() for i in grayWords], col=self.keyBoard.GRAY)
             g, y, gr = self.wordz.GREEN, self.wordz.YELLOW, self.wordz.GRAY
             self.wordz.changeText(self.wordz.pos, gWord, [g if i in greenWords else (y if i in yellowWords else gr)
@@ -179,7 +183,7 @@ class Gui(Qt.QWidget):
 
     def onKeyPress(self, w):
         word = self.wordz.tags[self.wordz.pos][1] + w
-        if len(word) > self.wordz.lengthOfWord: word = word[:self.wordz.lengthOfWord]
+        if len(word) > self.wordz.lengthOfWord: word = word[:self.wordz.lengthOfWord+1]
         self.wordz.changeText(self.wordz.pos, word if w != '\b' else word[:-2])
 
 

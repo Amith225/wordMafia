@@ -1,7 +1,10 @@
 import random
 import os
+
 from colVars import PrintVars as Pv
 
+
+# fixme: no double yellow for same word
 lengthOfWords = 5
 numOfTrial = 6
 with open("allowed.txt", 'r') as file:
@@ -10,14 +13,15 @@ with open("sample.txt", 'r') as file:
     sampleList = file.read().splitlines()
 KEYS = [c.upper() for c in "qwertyuiopasdfghjklzxcvbnm"]
 LAYERS = [10, 9, 7]
-trailTillNow, KEYS_COL, gWord = 0, [Pv.CWHITEBG] * len(KEYS), "_"*lengthOfWords
+trailTillNow, KEYS_COL, gWord, wordHistory = 0, [Pv.CWHITEBG] * len(KEYS), " _ "*lengthOfWords, []
 
 
 def initialize():
-    global trailTillNow, KEYS_COL, gWord
+    global trailTillNow, KEYS_COL, gWord, wordHistory
     trailTillNow = 0
     KEYS_COL = [Pv.CWHITEBG] * len(KEYS)
-    gWord = "_"*lengthOfWords
+    gWord = " _ "*lengthOfWords
+    wordHistory = []
 
 
 def checkIfAllowed(inp):
@@ -71,7 +75,9 @@ def interface():
     global prevWord, prevNotAllowed
     os.system('cls')
     keyBoard()
-    print(' '.join(gWord))
+    print()
+    [print(w) for i, w in enumerate(wordHistory)]
+    print(gWord)
     if prevNotAllowed:
         print(f"word '{prevWord}' not allowed")
     inp = input(f"Give a {lengthOfWords} lettered word(you have {numOfTrial - trailTillNow + 1} trails left): ")
@@ -105,9 +111,17 @@ def game():
         for greenWord in greenWords:
             i = KEYS.index(inp[greenWord].upper())
             KEYS_COL[i] = Pv.CGREENBG
+        hWord = ''
         for i, c in enumerate(inp):
             if i in greenWords:
-                gWord = gWord[:i] + c.upper() + gWord[i+1:]
+                gWord = gWord[:i*3+1] + c.upper() + gWord[i*3+1+1:]
+                hWord += Pv.CGREENBG
+            elif i in yellowWords:
+                hWord += Pv.CYELLOWBG
+            else:
+                hWord += Pv.CGREYBG
+            hWord += Pv.CBLACK + ' ' + c.upper() + ' ' + Pv.CEND
+        wordHistory.append(hWord)
         if inp == word:
             winFlag = True
             break
