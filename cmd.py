@@ -21,6 +21,7 @@ def initialize():
 
 
 def checkIfAllowed(inp):
+    inp = inp.lower()
     if inp in allowedList or inp in sampleList:
         return True
     else:
@@ -28,17 +29,20 @@ def checkIfAllowed(inp):
 
 
 def checkRules(word, inp):
+    inp = inp.lower()
+    word = word.lower()
     rightPosList = []
     correctWordList = []
     wrongWordList = []
-    for l1, l2 in zip(inp, word):
+    for i in range(len(word)):
+        l1, l2 = inp[i], word[i]
         if l1 == l2:
-            rightPosList.append(l1)
+            rightPosList.append(i)
         elif l1 in word:
             if l1 not in correctWordList:
-                correctWordList.append(l1)
+                correctWordList.append(i)
         else:
-            wrongWordList.append(l1)
+            wrongWordList.append(i)
 
     return rightPosList, correctWordList, wrongWordList
 
@@ -92,17 +96,17 @@ def game():
         inp = interface()
         greenWords, yellowWords, grayWords = checkRules(word, inp)
         for grayWord in grayWords:
-            i = KEYS.index(grayWord.upper())
+            i = KEYS.index(inp[grayWord].upper())
             KEYS_COL[i] = Pv.CGREYBG
         for yellowWord in yellowWords:
-            i = KEYS.index(yellowWord.upper())
+            i = KEYS.index(inp[yellowWord].upper())
             if KEYS_COL[i] == Pv.CWHITEBG:
                 KEYS_COL[i] = Pv.CYELLOWBG
         for greenWord in greenWords:
-            i = KEYS.index(greenWord.upper())
+            i = KEYS.index(inp[greenWord].upper())
             KEYS_COL[i] = Pv.CGREENBG
         for i, c in enumerate(inp):
-            if c in greenWords:
+            if i in greenWords:
                 gWord = gWord[:i] + c.upper() + gWord[i+1:]
         if inp == word:
             winFlag = True
@@ -115,10 +119,14 @@ def game():
     print()
 
 
-if __name__ == '__main__':
+def main():
     while 1:
         inp = input("Do You Want To PLay 'Word Mafia' (y or n): ")
         if inp.lower() == 'y':
             game()
         else:
             break
+
+
+if __name__ == '__main__':
+    main()

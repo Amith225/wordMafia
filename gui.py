@@ -7,10 +7,12 @@ class KeyBoard(Qt.QWidget):
     KEYS = [c.upper() for c in "qwertyuiopasdfghjklzxcvbnm"]
     LAYERS = [10, 9, 7]
 
+    BASE = "QPushButton{background-color: rgb(225, 225, 225);}" \
+            "QPushButton::hover{background-color: lightblue;}"
     GREEN = "QPushButton{background-color: green;}" \
             "QPushButton::hover{background-color: lightgreen;}"
-    RED = "QPushButton{background-color: red;}" \
-          "QPushButton::hover{background-color: rgb(255,127,127);}"
+    YELLOW = "QPushButton{background-color: yellow;}" \
+             "QPushButton::hover{background-color: lightyellow;}"
     GRAY = "QPushButton{background-color: gray;}" \
            "QPushButton::hover{background-color: rgb(175,175,175);}"
 
@@ -37,7 +39,10 @@ class KeyBoard(Qt.QWidget):
             k += l
             hbox.addStretch(1)
             self.vbox.addLayout(hbox)
+        self.colorIfy(*self.tags, col=self.BASE)
         button = Qt.QPushButton("BackSpace")
+        button.setStyleSheet(self.BASE)
+        button.setFixedHeight(50)
         button.clicked.connect(lambda: self.buttonHook("\b"))
         self.vbox.addWidget(button)
 
@@ -50,7 +55,7 @@ class KeyBoard(Qt.QWidget):
 
 class Wordz(Qt.QWidget):
     GREEN = "green"
-    RED = "red"
+    YELLOW = "yellow"
     GRAY = "gray"
 
     def __init__(self, lengthOfWord, numAttempts, *args, **kwargs):
@@ -58,6 +63,7 @@ class Wordz(Qt.QWidget):
         self.vbox = Qt.QVBoxLayout(self)
         self.vbox.setAlignment(Qt.Qt.AlignHCenter)
         self.setLayout(self.vbox)
+
         self.lengthOfWord = lengthOfWord
         self.numAttempts = numAttempts
         self.pos = 1
@@ -67,19 +73,22 @@ class Wordz(Qt.QWidget):
     def draw(self):
         for i in range(self.numAttempts):
             i += 1
-            lab = Qt.QLabel(f"{i}.   {'_ '*self.lengthOfWord}")
-            lab.setFont(Qt.QFont("times", 11))
+            lab = Qt.QLabel()
+            lab.setFont(Qt.QFont("times"))
             self.tags[i] = lab, ''
+            self.changeText(i, '')
             self.vbox.addWidget(lab)
 
     def changeText(self, tag, word, cols=None):
-        if cols is None: cols = ['black'] * len(word)
+        if cols is None: cols = ['rgb(240, 240, 240)'] * len(word)
         assert len(word) == len(cols)
         self.tags[tag] = self.tags[tag][0], word
-        if (vac := self.lengthOfWord - len(word)) > 0: word += '_'*vac; cols += ['black']*vac
+        if (vac := self.lengthOfWord - len(word)) > 0: word += '_' * vac; cols += ['rgb(240, 240, 240)'] * vac
         elif vac < 0: word = word[:self.lengthOfWord]; cols = cols[:self.lengthOfWord]
         lab = self.tags[tag][0]
-        lab.setText(f"{tag}.&nbsp;&nbsp;&nbsp;{' '.join(f'<font color={c}>{w}</font>' for w, c in zip(word, cols))}")
+        colWords = ''.join(f'<span style="background-color:{c};font-size:20px;">&nbsp;{w}&nbsp;</span>'
+                           for w, c in zip(word, cols))
+        lab.setText(f"{tag}.&nbsp;&nbsp;&nbsp;{colWords}")
 
 
 class Gui(Qt.QWidget):
@@ -97,6 +106,7 @@ class Gui(Qt.QWidget):
         self.__setWords(lengthOfWord, numAttempts)
         self.__setKeyBoard()
         self.__setIOInterface()
+        self.__game_init()
 
     def __setWords(self, lengthOfWord, numAttempts):
         self.wordz = Wordz(lengthOfWord, numAttempts, self)
@@ -107,22 +117,81 @@ class Gui(Qt.QWidget):
         self.vbox.addWidget(self.keyBoard)
 
     def __setIOInterface(self):
-        guessBut = Qt.QPushButton("Guess")
-        guessBut.setFixedSize(100, 50)
-        guessBut.clicked.connect(lambda: self.onGuessPress())
-        self.vbox.addWidget(guessBut)
+        guessFrame = Qt.QFrame()
+        self.guessBut = Qt.QPushButton()
+        self.guessBut.setFixedSize(100, 50)
+        self.guessLab = Qt.QLabel(self.guessLabWord1())
+
+        hbox = Qt.QHBoxLayout()
+        hbox.addWidget(self.guessBut)
+        hbox.addWidget(self.guessLab)
+        guessFrame.setLayout(hbox)
+        self.vbox.addWidget(guessFrame)
+
+    def __toGuessBut(self):
+        self.guessBut.setText("Guess")
+        try: self.guessBut.clicked.disconnect()
+        except TypeError: pass
+        self.guessBut.clicked.connect(lambda: self.onGuessPress())
+        self.keyBoard.setDisabled(False)
+
+    def __toReGameBut(self):
+        self.guessBut.setText("Play Again")
+        try: self.guessBut.clicked.disconnect()
+        except TypeError: pass
+        self.guessBut.clicked.connect(lambda: self.__game_init())
+        self.keyBoard.setDisabled(True)
+
+    def guessLabWord1(self): return f"Guess The {self.wordz.lengthOfWord} lettered word!"
+
+    @staticmethod
+    def guessLabWon(word): return f"Hurray you guessed the correct word '{word}'"
+
+    @staticmethod
+    def guessLabLost(word): return f"Oops no more turns left! You Lost, The word was '{word}'"
+
+    def __game_init(self):
+        self.__word = cmd.genRandomWord()
+        self.__toGuessBut()
+        for i in range(1, self.wordz.numAttempts + 1): self.wordz.changeText(i, '')
+        self.keyBoard.colorIfy(*self.keyBoard.tags, col=self.keyBoard.BASE)
+        self.wordz.pos = 1
 
     def onGuessPress(self):
-        print(self.wordz.tags[self.wordz.pos][1])
+        gWord = self.wordz.tags[self.wordz.pos][1]
+        if cmd.checkIfAllowed(gWord):
+            self.guessLab.setText(self.guessLabWord1())
+            greenWords, yellowWords, grayWords = cmd.checkRules(self.__word, gWord)
+            self.keyBoard.colorIfy(*[gWord[i].upper() for i in greenWords], col=self.keyBoard.GREEN)
+            self.keyBoard.colorIfy(*[gWord[i].upper() for i in yellowWords], col=self.keyBoard.YELLOW)
+            self.keyBoard.colorIfy(*[gWord[i].upper() for i in grayWords], col=self.keyBoard.GRAY)
+            g, y, gr = self.wordz.GREEN, self.wordz.YELLOW, self.wordz.GRAY
+            self.wordz.changeText(self.wordz.pos, gWord, [g if i in greenWords else (y if i in yellowWords else gr)
+                                                          for i, w in enumerate(gWord)])
+            self.wordz.pos += 1
+            if gWord.lower() == self.__word.lower():
+                self.guessLab.setText(self.guessLabWon(gWord))
+                self.__toReGameBut()
+            elif self.wordz.pos > self.wordz.numAttempts:
+                self.guessLab.setText(self.guessLabLost(self.__word.upper()))
+                self.__toReGameBut()
+        else: self.guessLab.setText(f"The Word '{gWord}' is not Valid")
 
     def onKeyPress(self, w):
-        word = self.wordz.tags[self.wordz.pos][1]
-        self.wordz.changeText(self.wordz.pos, word + w if w != '\b' else word[:-1])
+        word = self.wordz.tags[self.wordz.pos][1] + w
+        if len(word) > self.wordz.lengthOfWord: word = word[:self.wordz.lengthOfWord]
+        self.wordz.changeText(self.wordz.pos, word if w != '\b' else word[:-2])
 
 
 def main():
     app = Qt.QApplication(sys.argv)
     lengthOfWord, numOfTrial = cmd.lengthOfWords, cmd.numOfTrial
     win = Gui(lengthOfWord, numOfTrial)
+    win.activateWindow()
     win.show()
+    win.activateWindow()
     sys.exit(app.exec_())
+
+
+if __name__ == '__main__':
+    main()

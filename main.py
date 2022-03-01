@@ -3,7 +3,11 @@ import cmd
 
 
 def main():
-    gui.main()
+    inp = input('(Gui:g or Cmd:c)>>> ').lower()
+    if inp == 'g':
+        gui.main()
+    elif inp == 'c':
+        cmd.main()
 
 
 if __name__ == '__main__':
