@@ -115,7 +115,3 @@ def main():
         inp = input("Do You Want To PLay 'Word Mafia' (y or n): ")
         if inp.lower() == 'y': game()
         else: break
-
-
-if __name__ == '__main__':
-    main()

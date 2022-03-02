@@ -107,6 +107,7 @@ class Gui(Qt.QWidget):
     def __init__(self, lengthOfWord, numOfTrial, *args, **kwargs):
         super(Gui, self).__init__(*args, **kwargs)
         self.setWindowTitle(self.WIN_TITLE)
+        self.setWindowIcon(Qt.QIcon('./assets/icon.png'))
         self.resize(*self.SIZE)
 
         self.vbox = Qt.QVBoxLayout(self)
@@ -125,22 +126,29 @@ class Gui(Qt.QWidget):
         self.vbox.addWidget(self.keyBoard)
 
     def __setIOInterface(self):
+        self.guessLab = Qt.QLabel("Wanna Play A Game Of Word Mafia!!?")
+        self.guessLab.setStyleSheet("border: 3px solid blue;padding: 15px;margin: 15px")
+        self.vbox.addWidget(self.guessLab)
+
         guessFrame = Qt.QFrame()
         self.guessBut = Qt.QPushButton("Guess")
-        self.guessBut.setFixedSize(100, 50)
+        self.guessBut.setFixedSize(150, 50)
         self.guessBut.clicked.connect(lambda: self.onGuessPress())
-        self.guessLab = Qt.QLabel()
-
+        newGameBut = Qt.QPushButton("Play New Game")
+        newGameBut.setFixedSize(150, 50)
+        newGameBut.clicked.connect(lambda: self.__game_init())
+        quitBut = Qt.QPushButton("Exit Game")
+        quitBut.setFixedSize(150, 50)
+        # noinspection PyTypeChecker
+        quitBut.clicked.connect(lambda: self.close())
         hbox = Qt.QHBoxLayout()
         hbox.addWidget(self.guessBut)
-        hbox.addWidget(self.guessLab)
+        hbox.addStretch(1)
+        hbox.addWidget(newGameBut)
+        hbox.addStretch(1)
+        hbox.addWidget(quitBut)
         guessFrame.setLayout(hbox)
         self.vbox.addWidget(guessFrame)
-
-        self.newGameBut = Qt.QPushButton("Play New Game")
-        self.newGameBut.setFixedSize(150, 50)
-        self.newGameBut.clicked.connect(lambda: self.__game_init())
-        self.vbox.addWidget(self.newGameBut, alignment=Qt.Qt.AlignHCenter)
 
         self.guessDis()
 
@@ -215,7 +223,3 @@ def main():
     win.show()
     win.activateWindow()
     sys.exit(app.exec_())
-
-
-if __name__ == '__main__':
-    main()

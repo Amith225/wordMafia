@@ -3,7 +3,7 @@ from src import cmd
 
 
 def main():
-    inp = input('(Gui:g or Cmd:c)>>> ').lower()
+    inp = input('Gui:g or Cmd:c > ').lower()
     if inp == 'g':
         gui.main()
     elif inp == 'c':
