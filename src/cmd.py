@@ -8,7 +8,8 @@ numOfTrial = 6
 with open("./assets/allowed.txt", 'r') as file: allowedWords = file.read().splitlines()
 with open("./assets/sample.txt", 'r') as file: guessableWords = file.read().splitlines()
 KEYS, LAYERS = [c.upper() for c in "qwertyuiopasdfghjklzxcvbnm"], [10, 9, 7]
-trialTillNow: int; KEYS_COL: list[Col.C]; gWord: str; wordHistory: list[str]; prevNotAllowed: bool; prevWord: str
+trialTillNow, KEYS_COL, gWord, wordHistory = 0, [Col.CWHITEBG] * len(KEYS), " _ " * lengthOfWords, []
+prevNotAllowed, prevWord = False, ''
 
 
 def initialize():
