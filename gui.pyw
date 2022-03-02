@@ -95,7 +95,7 @@ class Gui(Qt.QWidget):
     WIN_TITLE = "Word Mafia"
     SIZE = (600, 400)
 
-    def __init__(self, lengthOfWord, numAttempts, *args, **kwargs):
+    def __init__(self, lengthOfWord, numOfTrial, *args, **kwargs):
         super(Gui, self).__init__(*args, **kwargs)
         self.setWindowTitle(self.WIN_TITLE)
         self.resize(*self.SIZE)
@@ -103,24 +103,24 @@ class Gui(Qt.QWidget):
         self.vbox = Qt.QVBoxLayout(self)
 
         self.setLayout(self.vbox)
-        self.__setWords(lengthOfWord, numAttempts)
+        self.__setWords(lengthOfWord, numOfTrial)
         self.__setKeyBoard()
         self.__setIOInterface()
         self.__game_init()
 
     def __setWords(self, lengthOfWord, numAttempts):
-        self.wordz = Wordz(lengthOfWord, numAttempts, self)
+        self.wordz = Wordz(lengthOfWord, numAttempts)
         self.vbox.addWidget(self.wordz)
 
     def __setKeyBoard(self):
-        self.keyBoard = KeyBoard(self.onKeyPress, self)
+        self.keyBoard = KeyBoard(self.onKeyPress)
         self.vbox.addWidget(self.keyBoard)
 
     def __setIOInterface(self):
         guessFrame = Qt.QFrame()
         self.guessBut = Qt.QPushButton()
         self.guessBut.setFixedSize(100, 50)
-        self.guessLab = Qt.QLabel(self.guessLabWord1())
+        self.guessLab = Qt.QLabel(self.guessLabInit())
 
         hbox = Qt.QHBoxLayout()
         hbox.addWidget(self.guessBut)
@@ -142,56 +142,62 @@ class Gui(Qt.QWidget):
         self.guessBut.clicked.connect(lambda: self.__game_init())
         self.keyBoard.setDisabled(True)
 
-    def guessLabWord1(self): return f"Guess The {self.wordz.lengthOfWord} lettered word!"
+    # todo: make this common with cmd
+    def guessLabInit(self): return f"Guess The {self.wordz.lengthOfWord} lettered word!"
 
     @staticmethod
-    def guessLabWon(word): return f"Hurray you guessed the correct word '{word}'"
+    def guessLabWon(word, score):
+        return f"Hurray! you guessed the correct word '{word}' " \
+               f"with Score {score}/{cmd.numOfTrial}"
 
     @staticmethod
-    def guessLabLost(word): return f"Oops no more turns left! You Lost, The word was '{word}'"
+    def guessLabLost(word): return f"Oops! no more turns left! You Lost, The word was '{word}'"
 
     def __game_init(self):
-        self.greens = set()
+        cmd.initialize()
         self.__word = cmd.genRandomWord()
         self.__toGuessBut()
         for i in range(1, self.wordz.numAttempts + 1): self.wordz.changeText(i, '')
         self.keyBoard.colorIfy(*self.keyBoard.tags, col=self.keyBoard.BASE)
+        self.guessLab.setText(self.guessLabInit())
         self.wordz.pos = 1
 
     def onGuessPress(self):
-        gWord = self.wordz.tags[self.wordz.pos][1]
-        if cmd.checkIfAllowed(gWord):
-            self.guessLab.setText(self.guessLabWord1())
-            greenWords, yellowWords, grayWords = cmd.checkRules(self.__word, gWord)
-            greens = [gWord[i].upper() for i in greenWords]
-            self.greens.update(greens)
-            self.keyBoard.colorIfy(*greens, col=self.keyBoard.GREEN)
-            self.keyBoard.colorIfy(*[gWord[i].upper() for i in yellowWords if gWord[i].upper() not in self.greens],
-                                   col=self.keyBoard.YELLOW)
-            self.keyBoard.colorIfy(*[gWord[i].upper() for i in grayWords], col=self.keyBoard.GRAY)
+        guessedWord = self.wordz.tags[self.wordz.pos][1]
+        if cmd.checkIfAllowed(guessedWord):
+            self.guessLab.setText(self.guessLabInit())
+            greenWords, yellowWords, grayWords = cmd.checkTheWords(self.__word, guessedWord)
+            self.keyBoard.colorIfy(*[guessedWord[i].upper() for i in grayWords], col=self.keyBoard.GRAY)
+            self.keyBoard.colorIfy(*[guessedWord[i].upper() for i in yellowWords], col=self.keyBoard.YELLOW)
+            self.keyBoard.colorIfy(*[guessedWord[i].upper() for i in greenWords], col=self.keyBoard.GREEN)
+            cmd.updateGwordAndHword(guessedWord, greenWords, yellowWords)
             g, y, gr = self.wordz.GREEN, self.wordz.YELLOW, self.wordz.GRAY
-            self.wordz.changeText(self.wordz.pos, gWord, [g if i in greenWords else (y if i in yellowWords else gr)
-                                                          for i, w in enumerate(gWord)])
+            self.wordz.changeText(self.wordz.pos, guessedWord, [g if i in greenWords else (y if i in yellowWords
+                                                                                           else gr)
+                                                                for i, w in enumerate(guessedWord)])
             self.wordz.pos += 1
-            if gWord.lower() == self.__word.lower():
-                self.guessLab.setText(self.guessLabWon(gWord))
+            if guessedWord.lower() == self.__word.lower():
+                self.guessLab.setText(self.guessLabWon(guessedWord, self.wordz.numAttempts - self.wordz.pos + 2))
                 self.__toReGameBut()
             elif self.wordz.pos > self.wordz.numAttempts:
                 self.guessLab.setText(self.guessLabLost(self.__word.upper()))
                 self.__toReGameBut()
-        else: self.guessLab.setText(f"The Word '{gWord}' is not Valid")
+        else: self.guessLab.setText(f"The Word '{guessedWord}' is not Valid")
 
     def onKeyPress(self, w):
         word = self.wordz.tags[self.wordz.pos][1] + w
-        if len(word) > self.wordz.lengthOfWord: word = word[:self.wordz.lengthOfWord+1]
-        self.wordz.changeText(self.wordz.pos, word if w != '\b' else word[:-2])
+        if w == '\b': word = word[:-2]
+        if len(word) > self.wordz.lengthOfWord: word = word[:self.wordz.lengthOfWord]
+        # gWord = cmd.gWord.replace(' ', '')
+        # gWord = word + gWord[len(word):]
+        # cols = ['rgb(240, 240, 240)']*len(word) + \
+        #        ['rgb(240, 240, 240)' if i == '_' else self.wordz.GREEN for i in gWord[len(word):]]
+        self.wordz.changeText(self.wordz.pos, word)
 
 
 def main():
     app = Qt.QApplication(sys.argv)
-    lengthOfWord, numOfTrial = cmd.lengthOfWords, cmd.numOfTrial
-    win = Gui(lengthOfWord, numOfTrial)
-    win.activateWindow()
+    win = Gui(cmd.lengthOfWords, cmd.numOfTrial)
     win.show()
     win.activateWindow()
     sys.exit(app.exec_())
