@@ -1,5 +1,5 @@
 import sys
-import cmd
+from src import cmd
 from PyQt5 import Qt
 
 

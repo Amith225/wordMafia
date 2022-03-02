@@ -1,12 +1,12 @@
 import random
 import os
 
-from colVars import ColVars as Col
+from .colVars import ColVars as Col
 
 lengthOfWords = 5
 numOfTrial = 6
-with open("allowed.txt", 'r') as file: allowedWords = file.read().splitlines()
-with open("sample.txt", 'r') as file: guessableWords = file.read().splitlines()
+with open("./assets/allowed.txt", 'r') as file: allowedWords = file.read().splitlines()
+with open("./assets/sample.txt", 'r') as file: guessableWords = file.read().splitlines()
 KEYS, LAYERS = [c.upper() for c in "qwertyuiopasdfghjklzxcvbnm"], [10, 9, 7]
 trialTillNow: int; KEYS_COL: list[Col.C]; gWord: str; wordHistory: list[str]; prevNotAllowed: bool; prevWord: str
 

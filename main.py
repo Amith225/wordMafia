@@ -1,5 +1,5 @@
-import gui
-import cmd
+from src import gui
+from src import cmd
 
 
 def main():
