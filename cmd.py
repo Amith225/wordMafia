@@ -1,90 +1,86 @@
 import random
 import os
 
-from colVars import PrintVars as Pv
+from colVars import ColVars as Col
 
-
-# fixme: no double yellow for same word
 lengthOfWords = 5
 numOfTrial = 6
-with open("allowed.txt", 'r') as file:
-    allowedList = file.read().splitlines()
-with open("sample.txt", 'r') as file:
-    sampleList = file.read().splitlines()
-KEYS = [c.upper() for c in "qwertyuiopasdfghjklzxcvbnm"]
-LAYERS = [10, 9, 7]
-trailTillNow, KEYS_COL, gWord, wordHistory = 0, [Pv.CWHITEBG] * len(KEYS), " _ "*lengthOfWords, []
+with open("allowed.txt", 'r') as file: allowedWords = file.read().splitlines()
+with open("sample.txt", 'r') as file: guessableWords = file.read().splitlines()
+KEYS, LAYERS = [c.upper() for c in "qwertyuiopasdfghjklzxcvbnm"], [10, 9, 7]
+trialTillNow: int; KEYS_COL: list[Col.C]; gWord: str; wordHistory: list[str]; prevNotAllowed: bool; prevWord: str
 
 
 def initialize():
-    global trailTillNow, KEYS_COL, gWord, wordHistory
-    trailTillNow = 0
-    KEYS_COL = [Pv.CWHITEBG] * len(KEYS)
-    gWord = " _ "*lengthOfWords
-    wordHistory = []
+    global trialTillNow, KEYS_COL, gWord, wordHistory, prevNotAllowed, prevWord
+    trialTillNow, KEYS_COL, gWord, wordHistory = 0, [Col.CWHITEBG] * len(KEYS), " _ " * lengthOfWords, []
+    prevNotAllowed, prevWord = False, ''
 
 
-def checkIfAllowed(inp):
-    inp = inp.lower()
-    if inp in allowedList or inp in sampleList:
-        return True
-    else:
-        return False
+def checkIfAllowed(guessedWord):
+    guessedWord = guessedWord.lower()
+    if guessedWord in allowedWords or guessedWord in guessableWords: return True
+    else: return False
 
 
-def checkRules(word, inp):
-    inp = inp.lower()
-    word = word.lower()
-    rightPosList = []
-    correctWordList = []
-    wrongWordList = []
-    for i in range(len(word)):
-        l1, l2 = inp[i], word[i]
+def checkTheWords(toGuessWord, guessedWord):
+    guessedWord, toGuessWord = guessedWord.lower(), toGuessWord.lower()
+    correctPosList, letterInWordList, letterAlreadyThere, wrongLetterList = [], [], [], []
+    for i in range(len(toGuessWord)):
+        l1, l2 = guessedWord[i], toGuessWord[i]
         if l1 == l2:
-            rightPosList.append(i)
-        elif l1 in word:
-            if l1 not in correctWordList:
-                correctWordList.append(i)
+            correctPosList.append(i)
+        elif toGuessWord.count(l1) - gWord.count(l1.upper()) > 0 and l1 in toGuessWord and \
+                toGuessWord.count(l1) - letterAlreadyThere.count(l1) > 0:
+            letterInWordList.append(i)
+            letterAlreadyThere.append(l1)
+        elif not gWord.count(l1.upper()): wrongLetterList.append(i)
+
+    return correctPosList, letterInWordList, wrongLetterList
+
+
+def updateGwordAndHword(guessedWord, greenWords, yellowWords):
+    global gWord
+    hWord = ''
+    for i, c in enumerate(guessedWord):
+        if i in greenWords:
+            gWord = gWord[:i * 3 + 1] + c.upper() + gWord[i * 3 + 1 + 1:]
+            hWord += Col.CGREENBG
+        elif i in yellowWords:
+            hWord += Col.CYELLOWBG
         else:
-            wrongWordList.append(i)
+            hWord += Col.CGREYBG
+        hWord += Col.CBLACK + ' ' + c.upper() + ' ' + Col.CEND
+    wordHistory.append(hWord)
 
-    return rightPosList, correctWordList, wrongWordList
 
-
-def genRandomWord():
-    return random.choice(sampleList)
+def genRandomWord(): return random.choice(guessableWords)
 
 
 def keyBoard():
-    i = 0
-    prevLayer = 0
+    i = prevLayer = 0
     for layer in LAYERS:
         numSpace = prevLayer - layer
-        print(' '*(numSpace if numSpace > 0 else 0), end='')
-        for key_col, key in zip(KEYS_COL[i:i+layer], KEYS[i:i+layer]):
-            print(key_col + Pv.CBLACK + ' ' + key + ' ' + Pv.CEND, end='')
+        print(' ' * (numSpace if numSpace > 0 else 0), end='')
+        for keyCol, key in zip(KEYS_COL[i:i+layer], KEYS[i:i+layer]):
+            print(f"{keyCol}{Col.CBLACK} {key} {Col.CEND}", end='')
         print()
         prevLayer = layer
         i += layer
-
-
-prevNotAllowed, prevWord = False, ''
+    print()
 
 
 def interface():
     global prevWord, prevNotAllowed
     os.system('cls')
     keyBoard()
-    print()
     [print(w) for i, w in enumerate(wordHistory)]
     print(gWord)
-    if prevNotAllowed:
-        print(f"word '{prevWord}' not allowed")
-    inp = input(f"Give a {lengthOfWords} lettered word(you have {numOfTrial - trailTillNow + 1} trails left): ")
+    if prevNotAllowed: print(f"toGuessWord '{prevWord}' not allowed")
+    inp = input(f"Give a {lengthOfWords} lettered toGuessWord(you have {numOfTrial - trialTillNow + 1} trials left): ")
     prevWord = inp
-    allowedFlag = checkIfAllowed(inp)
 
-    if allowedFlag:
+    if checkIfAllowed(inp):
         prevNotAllowed = False
         return inp
     else:
@@ -96,50 +92,28 @@ def game():
     initialize()
     word = genRandomWord()
     winFlag = False
-    global trailTillNow, gWord
-    while trailTillNow < 6:
-        trailTillNow += 1
-        inp = interface()
-        greenWords, yellowWords, grayWords = checkRules(word, inp)
-        for grayWord in grayWords:
-            i = KEYS.index(inp[grayWord].upper())
-            KEYS_COL[i] = Pv.CGREYBG
-        for yellowWord in yellowWords:
-            i = KEYS.index(inp[yellowWord].upper())
-            if KEYS_COL[i] == Pv.CWHITEBG:
-                KEYS_COL[i] = Pv.CYELLOWBG
-        for greenWord in greenWords:
-            i = KEYS.index(inp[greenWord].upper())
-            KEYS_COL[i] = Pv.CGREENBG
-        hWord = ''
-        for i, c in enumerate(inp):
-            if i in greenWords:
-                gWord = gWord[:i*3+1] + c.upper() + gWord[i*3+1+1:]
-                hWord += Pv.CGREENBG
-            elif i in yellowWords:
-                hWord += Pv.CYELLOWBG
-            else:
-                hWord += Pv.CGREYBG
-            hWord += Pv.CBLACK + ' ' + c.upper() + ' ' + Pv.CEND
-        wordHistory.append(hWord)
-        if inp == word:
+    global trialTillNow, gWord
+    while trialTillNow < numOfTrial:
+        trialTillNow += 1
+        guessedWord = interface()
+        greenWords, yellowWords, grayWords = checkTheWords(word, guessedWord)
+        for grayWord in grayWords: KEYS_COL[KEYS.index(guessedWord[grayWord].upper())] = Col.CGREYBG
+        for yellowWord in yellowWords: KEYS_COL[KEYS.index(guessedWord[yellowWord].upper())] = Col.CYELLOWBG
+        for greenWord in greenWords: KEYS_COL[KEYS.index(guessedWord[greenWord].upper())] = Col.CGREENBG
+        updateGwordAndHword(guessedWord, greenWords, yellowWords)
+        if guessedWord == word:
             winFlag = True
             break
-    if winFlag:
-        print("You Won")
-    else:
-        print("U ran out tries")
-    print(f"The Correct Word Was '{word}'")
-    print()
+    if winFlag: print("You Won")
+    else: print("U ran out tries")
+    print(f"The Correct Word Was '{word}'", end='\n\n')
 
 
 def main():
     while 1:
         inp = input("Do You Want To PLay 'Word Mafia' (y or n): ")
-        if inp.lower() == 'y':
-            game()
-        else:
-            break
+        if inp.lower() == 'y': game()
+        else: break
 
 
 if __name__ == '__main__':
